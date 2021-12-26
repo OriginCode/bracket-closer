@@ -1,6 +1,21 @@
 use std::error::Error;
 use teloxide::prelude::*;
 
+async fn parse_brackets(text: &str) -> String {
+    let mut q = Vec::new();
+    for c in text.chars() {
+        match c {
+            '(' => q.push(')'),
+            '（' => q.push('）'),
+            ')' | '）' => {
+                q.pop();
+            }
+            _ => continue,
+        }
+    }
+    String::from_iter(q)
+}
+
 async fn run() -> Result<(), Box<dyn Error + Send + Sync>> {
     teloxide::enable_logging!();
     log::info!("Starting bracket closer ...");
@@ -9,12 +24,8 @@ async fn run() -> Result<(), Box<dyn Error + Send + Sync>> {
 
     teloxide::repl(bot, |message| async move {
         if let Some(t) = message.update.text() {
-            if t.ends_with("(") {
-                log::info!("Someone forgot to close the \"(\" bracket!");
-                message.answer(")").await?;
-            } else if t.ends_with("（") {
-                log::info!("Someone forgot to close the \"（\" bracket!");
-                message.answer("）").await?;
+            if let Some(s) = Some(parse_brackets(t).await).filter(|x| !String::is_empty(x)) {
+                message.answer(s).await?;
             }
         }
         respond(())
