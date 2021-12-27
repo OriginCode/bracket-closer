@@ -1,7 +1,7 @@
 use std::error::Error;
 use teloxide::prelude::*;
 
-async fn parse_brackets(text: &str) -> String {
+async fn parse_brackets(text: &str) -> Option<String> {
     let mut q = Vec::new();
     for c in text.chars() {
         match c {
@@ -13,7 +13,9 @@ async fn parse_brackets(text: &str) -> String {
             _ => continue,
         }
     }
-    String::from_iter(q)
+    Some(q)
+        .filter(|x| !x.is_empty())
+        .map(|x| String::from_iter(x.iter().rev()))
 }
 
 async fn run() -> Result<(), Box<dyn Error + Send + Sync>> {
@@ -23,8 +25,8 @@ async fn run() -> Result<(), Box<dyn Error + Send + Sync>> {
     let bot = Bot::from_env().auto_send();
 
     teloxide::repl(bot, |message| async move {
-        if let Some(t) = message.update.text() {
-            if let Some(s) = Some(parse_brackets(t).await).filter(|x| !String::is_empty(x)) {
+        if let Some(t) = message.update.text().or_else(|| message.update.caption()) {
+            if let Some(s) = parse_brackets(t).await {
                 message.answer(s).await?;
             }
         }
